@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    {% load static %}
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Face Recognition</title>
+    <link rel="stylesheet" href="{% static 'css/styles.css' %}">
+</head>
+<body>
+
+    <!-- Navigation Bar -->
+    <nav>
+        <div class="logo">Face Recognition</div>
+        <ul>
+            <li><a href="#">Home</a></li>
+            <li><a href="#">About</a></li>
+        </ul>
+    </nav>
+
+    <!-- Hero Section -->
+    <header class="hero">
+        <div class="hero-content">
+            <h1>Welcome</h1>
+            <p>Experience the future of facial recognition technology.</p>
+            <button id="startButton" class="btn">Get Started</button>
+        </div>
+    </header>
+
+    <!-- Video Stream -->
+    <div class="video-container">
+        <video id="video" width="640" height="480" autoplay></video>
+        <canvas id="canvas" style="display:none;"></canvas>
+    </div>
+
+    <!-- Result Display -->
+    <p id="result"></p>
+
+    <script>
+        // Select elements
+        const video = document.getElementById("video");
+        const canvas = document.getElementById("canvas");
+        const resultText = document.getElementById("result");
+        const startButton = document.getElementById("startButton");
+
+        // Request access to webcam
+        function startCamera() {
+            navigator.mediaDevices.getUserMedia({ video: true })
+                .then((stream) => {
+                    video.srcObject = stream;
+                })
+                .catch((error) => {
+                    console.error("Error accessing webcam:", error);
+                });
+        }
+
+        // Capture a frame and send to Django backend
+        function captureAndSend() {
+            const context = canvas.getContext("2d");
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            context.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+            canvas.toBlob((blob) => {
+                const formData = new FormData();
+                formData.append("image", blob);
+
+                fetch("/recognize/", {
+                    method: "POST",
+                    body: formData
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.recognized_name) {
+                        resultText.innerText = "Recognized: " + data.recognized_name;
+                    } else {
+                        resultText.innerText = "No face detected.";
+                    }
+                })
+                .catch(error => console.error("Error:", error));
+            }, "image/jpeg");
+        }
+
+        // Start the camera and send image on button click
+        startButton.addEventListener("click", () => {
+            startCamera();
+            setTimeout(captureAndSend, 3000); // Capture after 3 seconds
+        });
+    </script>
+
+</body>
+</html>
